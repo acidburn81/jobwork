@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyType {
+  sole_proprietorship
+  limited_company
+  joint_stock_company
+}
+
+enum ChecklistStatus {
+  todo
+  in_progress
+  done
+  blocked
+}
+
+enum AuditAction {
+  onboarding_submitted
+  checklist_generated
+  identity_suggestions_generated
+  draft_document_generated
+}
+
+model Workspace {
+  id                String          @id @default(cuid())
+  founderFullName   String
+  city              String
+  companyType       CompanyType
+  activitySummary   String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  checklistItems    ChecklistItem[]
+  draftDocuments    DraftDocument[]
+  auditEvents       AuditEvent[]
+}
+
+model ChecklistItem {
+  id                      String          @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code                    String
+  title                   String
+  description             String
+  status                  ChecklistStatus @default(todo)
+  requiresDocumentDraft   Boolean         @default(false)
+  legalReviewRequired     Boolean         @default(true)
+  accountingReviewRequired Boolean        @default(true)
+  createdAt               DateTime        @default(now())
+
+  @@index([workspaceId, status])
+}
+
+model DraftDocument {
+  id                      String    @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type                    String
+  title                   String
+  bodyMarkdown            String
+  legalReviewRequired     Boolean   @default(true)
+  accountingReviewRequired Boolean  @default(true)
+  createdAt               DateTime  @default(now())
+
+  @@index([workspaceId, type])
+}
+
+model AuditEvent {
+  id          String      @id @default(cuid())
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  action      AuditAction
+  actorId     String?
+  metadata    Json
+  createdAt   DateTime    @default(now())
+
+  @@index([workspaceId, createdAt])
+}
